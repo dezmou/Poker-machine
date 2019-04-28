@@ -3,56 +3,54 @@ import { writeFileSync } from "fs";
 import { statRequest } from './sql/stats'
 
 class Tracker {
-    pg: Client;
+  pg: Client;
 
-    constructor() {
-        this.pg = new Client({
-            database: "poker_tracker",
-            password: "lapin",
-            user: "postgres",
-        })
-    }
+  constructor() {
+    this.pg = new Client({
+      database: "poker_tracker",
+      password: "lapin",
+      user: "postgres",
+    })
+  }
 
-    async init() {
-        await this.pg.connect();
-    }
+  async init() {
+    await this.pg.connect();
+  }
 
-    private async request(query: string, values?: any[]) {
-        const res = await this.pg.query({
-            text: query,
-            rowMode: 'array',
-            values
-        });
-        return res.rows;
-    }
+  private async request(query: string, values?: any[]): Promise<any[]> {
+    const res = await this.pg.query({
+      text: query,
+      rowMode: 'array',
+      values
+    });
+    return res.rows;
+  }
 
-    public async getHandById(id: number) {
-        const chien = await this.request(`SELECT history FROM cash_hand_histories WHERE id_hand = ${id}`);
-        console.log(chien)
-    }
+  public async getHandById(id: number): Promise<string> {
+    return (await this.request(`SELECT history FROM cash_hand_histories WHERE id_hand = ${id}`))[0][0];
+  }
 
-    public async getPlayerStat(playerName: string) {
-        const raw: any = {};
-        const [res] = await this.request(statRequest.request(playerName))
-        res.forEach((item, index) => {
-            raw[statRequest.keys[index]] = item;
-        })
-        const stats = {
-            vpip: raw.cnt_vpip / (raw.cnt_hands - raw.cnt_walks) * 100,
-            pfr: raw.cnt_pfr / (raw.cnt_hands - raw.cnt_walks) * 100,
-            bet3_pf: ((raw.cnt_p_3bet / raw.cnt_p_3bet_opp) * 100),
-        }
-        return stats
+  public async getPlayerStat(playerName: string) {
+    const raw: any = {};
+    const [res] = await this.request(statRequest.request(playerName))
+    res.forEach((item: any, index: number) => {
+      raw[statRequest.keys[index]] = item;
+    })
+    const stats = {
+      vpip: raw.cnt_vpip / (raw.cnt_hands - raw.cnt_walks) * 100,
+      pfr: raw.cnt_pfr / (raw.cnt_hands - raw.cnt_walks) * 100,
+      bet3_pf: ((raw.cnt_p_3bet / raw.cnt_p_3bet_opp) * 100),
     }
+    return stats
+  }
 }
 
-
 if (require.main === module) {
-    (async () => {
-        const chien = new Tracker()
-        await chien.init();
-        const lapin = await chien.getPlayerStat('audrey92140');
-    })()
+  (async () => {
+    const chien = new Tracker()
+    await chien.init();
+    const lapin = await chien.getPlayerStat('audrey92140');
+  })()
 }
 
 export default new Tracker()
